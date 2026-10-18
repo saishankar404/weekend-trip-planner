@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Design tokens
+   Depth strategy: borders only. No shadows anywhere in this prototype.
+   Structure comes from hairline borders and the linen surface shift.
+--------------------------------------------------------------------------- */
+@theme {
+  --color-ink: #292929;
+  --color-ink-2: #5d5d5d;
+  /* The quietest tier holds 12–13px labels, so it sits at the lightest gray
+     that still clears WCAG AA (4.54:1 on white) rather than a lighter one. */
+  --color-ink-3: #767676;
+
+  --color-surface: #ffffff;
+  --color-linen: #f7f6f3;
+  --color-line: rgba(41, 41, 41, 0.1);
+  --color-line-strong: rgba(41, 41, 41, 0.16);
+
+  /* Restrained accents, one per card, used for the card's overline and its
+     single strongest secondary value. Never as a large fill. */
+  --color-stay: #b4442a;
+  --color-stay-tint: #faf2ef;
+  --color-exp: #5b4b9e;
+  --color-exp-tint: #f3f1fb;
+  --color-food: #8a5a12;
+  --color-food-tint: #fbf6ec;
+
+  --radius-nav: 8px;
+  --radius-card: 16px;
+
+  /* SF Pro when the platform has it, Figtree on the web, one display face
+     reserved for headings and card titles. */
+  --font-sans: "SF Pro Text", -apple-system, BlinkMacSystemFont,
+    var(--font-figtree), "Segoe UI", sans-serif;
+  --font-display: var(--font-manrope), "SF Pro Display", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Type scale: 12 / 13 / 14 / 24 only. */
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.05rem;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.2rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.4rem;
+  --text-hero: 1.5rem;
+  --text-hero--line-height: 1.75rem;
+
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: 1.5;
+  /* Baseline tracking for the whole interface. */
+  letter-spacing: -0.15px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Optically tighten the one large step in the scale. */
+.tracking-hero {
+  letter-spacing: -0.02em;
+}
+
+.tracking-overline {
+  letter-spacing: 0.05em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-linen);
+}
+
+/* ---------------------------------------------------------------------------
+   Motion: enter-only, GPU-composited, and removed under reduced motion.
+--------------------------------------------------------------------------- */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dot-breathe {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise-in {
+    animation: rise-in 260ms var(--ease-out-strong) both;
+  }
+
+  .rise-in-1 {
+    animation-delay: 0ms;
+  }
+  .rise-in-2 {
+    animation-delay: 60ms;
+  }
+  .rise-in-3 {
+    animation-delay: 120ms;
+  }
+
+  .dot-breathe {
+    animation: dot-breathe 1100ms ease-in-out infinite;
+  }
+  .dot-breathe-2 {
+    animation-delay: 160ms;
+  }
+  .dot-breathe-3 {
+    animation-delay: 320ms;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Image placeholders. Drawn in CSS so the prototype never depends on a remote
+   asset: a hairline grid on the card's tint.
+--------------------------------------------------------------------------- */
+.placeholder-grid {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M16 0H0v16' fill='none' stroke='%23292929' stroke-opacity='0.05'/%3E%3C/svg%3E");
+  background-size: 16px 16px;
+}
+
+.schedule-row + .schedule-row {
+  border-top: 1px solid var(--color-line);
+}
