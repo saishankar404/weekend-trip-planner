@@ -1,85 +1,106 @@
 /**
- * Mock trip data.
+ * The mock trip, assembled from the content pack.
  *
- * Every date, price and sentence the prototype renders lives here, so the
- * scenario can be swapped without touching a UI component. Nothing in this
- * file is real inventory: `mock: true` travels with the response and the UI
- * labels it as a sample.
- *
- * The scenario: one weekend in East Austin, Friday to Sunday.
+ * Nothing here is invented: the three cards are the output of `selectWeekend`,
+ * and every value traces back to a row in the pack. `mock: true` travels with
+ * the response and the UI labels it as a sample.
  */
 
+import { CITY, upcomingWeekend } from "./inventory";
 import type { PlannerResponse } from "./schema";
+import { selectWeekend } from "./select";
 
-export const MOCK_TRIP: PlannerResponse = {
-  requestId: "req_sample_austin",
-  summary: "a weekend built around one long walk and one long dinner.",
-  mock: true,
-  cards: [
-    {
-      cardType: "stay",
-      id: "card_stay_east_austin",
-      details: {
-        destination: "East Austin, Texas",
-        checkIn: "2026-10-23",
-        checkOut: "2026-10-25",
-        nightlyPrice: 186,
-        currency: "USD",
-        listingTitle: "Sunlit bungalow with a screened porch",
-        description:
-          "A quiet street ten minutes from the river. Big windows, a real kitchen, and a porch built for slow mornings.",
+const CARD_IDS = {
+  stay: (id: string) => `card_stay_${id.toLowerCase()}`,
+  experience: (id: string) => `card_experience_${id.toLowerCase()}`,
+  food: (id: string) => `card_food_${id.toLowerCase()}`,
+} as const;
+
+export function buildMockTrip(): PlannerResponse {
+  const selected = selectWeekend();
+  if (selected === null) {
+    throw new Error("no weekend fits the reference budget");
+  }
+
+  const { stay, experience, food, total, budget, currency } = selected;
+  const weekend = upcomingWeekend();
+
+  return {
+    requestId: "req_sample_kyoto",
+    summary:
+      `${stay.neighbourhood} for two nights, ${experience.activityName.toLowerCase()} ` +
+      `on saturday, then ${food.cuisine.toLowerCase()} a short walk away.`,
+    mock: true,
+    budget: { reference: budget, total, currency },
+    cards: [
+      {
+        cardType: "stay",
+        id: CARD_IDS.stay(stay.id),
+        details: {
+          listingTitle: stay.listingTitle,
+          propertyType: stay.propertyType,
+          destination: `${stay.neighbourhood}, ${CITY}`,
+          checkIn: weekend.checkIn,
+          checkOut: weekend.checkOut,
+          nightlyPrice: stay.nightlyPrice,
+          totalPrice: stay.totalPrice,
+          currency,
+          guestRating: stay.guestRating,
+          reviewCount: stay.reviewCount,
+          hostFirstName: stay.hostFirstName,
+          highlight: stay.highlight,
+        },
       },
-    },
-    {
-      cardType: "experience",
-      id: "card_experience_barton_springs",
-      details: {
-        activityName: "South Congress to Barton Springs",
-        duration: "2 days · 5 stops",
-        dayPlan: [
-          {
-            day: "Saturday",
-            plan: "Coffee and record shops on South Congress, a swim at Barton Springs, then the bats at dusk.",
-          },
-          {
-            day: "Sunday",
-            plan: "An early Greenbelt hike before the heat, a late brunch, then a slow afternoon back at the stay.",
-          },
-        ],
+      {
+        cardType: "experience",
+        id: CARD_IDS.experience(experience.id),
+        details: {
+          activityName: experience.activityName,
+          category: experience.category,
+          date: weekend.activityDate,
+          startTime: experience.startTime,
+          durationHours: experience.durationHours,
+          pricePerGuest: experience.pricePerGuest,
+          totalPrice: experience.totalPrice,
+          currency,
+          guestRating: experience.guestRating,
+          hostFirstName: experience.hostFirstName,
+          meetingPoint: experience.meetingPoint,
+          availability: experience.availability,
+        },
       },
-    },
-    {
-      cardType: "food",
-      id: "card_food_licias",
-      details: {
-        restaurantName: "Licha's Cantina",
-        mealType: "Mexican, dinner",
-        priceRange: "$$ · about $40 a person",
-        description:
-          "Family-run and loud in the good way. Order the brisket tacos and a mezcal margarita.",
+      {
+        cardType: "food",
+        id: CARD_IDS.food(food.id),
+        details: {
+          restaurantName: food.restaurantName,
+          cuisine: food.cuisine,
+          neighbourhood: food.neighbourhood,
+          meal: food.meal,
+          priceLevel: food.priceLevel,
+          estimatedCost: food.estimatedCost,
+          currency,
+          walkMinutes: food.walkMinutes,
+          bookingNote: food.bookingNote,
+        },
       },
-    },
-  ],
-};
+    ],
+  };
+}
 
 /**
  * A deliberately broken payload, used by `?malformed=once` and by the manual
- * checks in the handoff notes. It fails because the food card is missing a
- * required field, which is exactly the failure the boundary must catch.
+ * checks in the handoff notes. The food card is missing its cost, which is
+ * exactly the kind of gap the boundary must catch before a card renders.
  */
-export const MALFORMED_RESPONSE: unknown = {
-  ...MOCK_TRIP,
-  cards: [
-    MOCK_TRIP.cards[0],
-    MOCK_TRIP.cards[1],
-    {
-      cardType: "food",
-      id: "card_food_licias",
-      details: {
-        restaurantName: "Licha's Cantina",
-        mealType: "Mexican, dinner",
-        description: "Family-run and loud in the good way.",
-      },
-    },
-  ],
-};
+export function buildMalformedResponse(): unknown {
+  const good = buildMockTrip();
+
+  const cards = good.cards.map((card) => {
+    if (card.cardType !== "food") return card;
+    const { estimatedCost: _droppedCost, ...incomplete } = card.details;
+    return { ...card, details: incomplete };
+  });
+
+  return { ...good, cards };
+}

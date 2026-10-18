@@ -1,3 +1,6 @@
+import { formatPrice } from "@/lib/planner/format";
+import type { BudgetSummary } from "@/lib/planner/schema";
+
 /**
  * The guest's own message. Right-aligned, linen, one corner tightened so it
  * reads as a sent bubble rather than a card.
@@ -13,24 +16,33 @@ export function GuestMessage({ text }: { text: string }) {
 }
 
 /**
- * The planner's answer: one short line, then the three cards.
+ * The planner's answer: one short line, what it costs against the reference
+ * budget, then the three cards.
  *
- * The mock label is not decoration. Every listing, price and itinerary in this
- * prototype is invented, and the guest has to know that before reading a price.
+ * The mock label is not decoration. Every listing, price and activity in this
+ * prototype comes from a sample content pack, and the guest has to know that
+ * before reading a price.
  */
 export function PlanMessage({
   summary,
   mock,
+  budget,
   children,
 }: {
   summary: string;
   mock: boolean;
+  budget: BudgetSummary;
   children: React.ReactNode;
 }) {
   return (
     <div>
       <p className="rise-in rise-in-1 max-w-[46ch] text-body text-ink-2 text-pretty">
         {summary}
+      </p>
+
+      <p className="mt-1 text-meta tabular-nums text-ink-2">
+        {formatPrice(budget.total, budget.currency)} of your{" "}
+        {formatPrice(budget.reference, budget.currency)} weekend
       </p>
 
       {mock ? (

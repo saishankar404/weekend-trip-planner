@@ -7,7 +7,7 @@
  * replacing the body of this one function.
  */
 
-import { MALFORMED_RESPONSE, MOCK_TRIP } from "./fixtures";
+import { buildMalformedResponse, buildMockTrip } from "./fixtures";
 import { parsePlannerResponse, type PlannerResponse } from "./schema";
 
 export type PlanFailure = {
@@ -65,7 +65,22 @@ export async function planTrip(
     };
   }
 
-  const payload: unknown = options.malformed ? MALFORMED_RESPONSE : MOCK_TRIP;
+  // Selecting a weekend can fail honestly — if no combination fits the budget
+  // there is no plan to return, and that must surface as a failure rather than
+  // an exception escaping into the UI.
+  let payload: unknown;
+  try {
+    payload = options.malformed ? buildMalformedResponse() : buildMockTrip();
+  } catch (error) {
+    return {
+      ok: false,
+      failure: {
+        kind: "unknown",
+        reason: error instanceof Error ? error.message : "could not assemble a weekend",
+      },
+    };
+  }
+
   const parsed = parsePlannerResponse(payload);
 
   if (!parsed.ok) {

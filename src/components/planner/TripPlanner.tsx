@@ -12,7 +12,7 @@ import { Composer } from "./Composer";
 import { ErrorNotice, GuestMessage, PlanMessage, ThinkingIndicator } from "./Messages";
 import { PlanCard } from "./PlanCard";
 
-const EXAMPLE_PROMPT = "a slow weekend in austin with one good hike and tacos";
+const EXAMPLE_PROMPT = "a quiet weekend in kyoto with a tea ceremony and good ramen";
 
 let idCounter = 0;
 function makeId(prefix: string): string {
@@ -244,6 +244,7 @@ export function TripPlanner() {
                       key={entry.id}
                       summary={entry.response.summary}
                       mock={entry.response.mock}
+                      budget={entry.response.budget}
                     >
                       {entry.response.cards.map((card, index) => (
                         <div key={card.id} className={`rise-in rise-in-${index + 1}`}>
@@ -274,7 +275,7 @@ export function TripPlanner() {
               </p>
               <p className="mt-3 max-w-[46ch] text-body text-ink-2 text-pretty">
                 say where you&rsquo;re going and what kind of time you want. you&rsquo;ll get a
-                place to stay, two days to fill, and somewhere to eat.
+                place to stay, something to do, and somewhere to eat.
               </p>
               <p className="mt-4 text-caption text-ink-3">
                 sample listings and prices, not a real booking

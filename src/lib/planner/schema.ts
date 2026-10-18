@@ -4,6 +4,10 @@
  * This module is the boundary: everything the planner produces is `unknown`
  * until it passes `parsePlannerResponse`. The UI only ever renders validated
  * cards, so a malformed response can never reach a card component.
+ *
+ * The field set follows the content pack rather than the other way round, so
+ * every column the pack ships has somewhere to land — except the two the pack
+ * leaves blank, which are optional here and never invented.
  */
 
 export const CARD_TYPES = ["stay", "experience", "food"] as const;
@@ -13,8 +17,19 @@ export type CardType = (typeof CARD_TYPES)[number];
 /** The success response always carries exactly three cards, in this order. */
 export const CARD_ORDER: readonly CardType[] = ["stay", "experience", "food"];
 
+/** What the three cards add up to, and what they were chosen against. */
+export type BudgetSummary = {
+  /** The pack's $600 reference budget. */
+  reference: number;
+  /** What the selected stay, experience and meal actually cost. */
+  total: number;
+  currency: string;
+};
+
 export type StayDetails = {
-  /** City and region the stay sits in, e.g. "East Austin, Texas". */
+  listingTitle: string;
+  propertyType: string;
+  /** Neighbourhood and city, e.g. "Gion, Kyoto". */
   destination: string;
   /** ISO date (YYYY-MM-DD) the guest checks in. */
   checkIn: string;
@@ -22,32 +37,47 @@ export type StayDetails = {
   checkOut: string;
   /** Nightly price in whole currency units. */
   nightlyPrice: number;
+  /** Total for the whole stay. */
+  totalPrice: number;
   /** ISO 4217 code, kept explicit so formatting never guesses. */
   currency: string;
-  description: string;
-  listingTitle: string;
-};
-
-export type DayPlan = {
-  /** Day label as the guest would say it, e.g. "Saturday". */
-  day: string;
-  plan: string;
+  guestRating: number;
+  reviewCount: number;
+  hostFirstName: string;
+  highlight: string;
 };
 
 export type ExperienceDetails = {
   activityName: string;
-  /** Human duration, e.g. "2 days". */
-  duration: string;
-  dayPlan: DayPlan[];
+  category: string;
+  /** ISO date (YYYY-MM-DD) the activity runs. */
+  date: string;
+  /** Local start time, e.g. "10:30". */
+  startTime: string;
+  durationHours: number;
+  pricePerGuest: number;
+  totalPrice: number;
+  currency: string;
+  guestRating: number;
+  /** Optional: the pack lists no host for E4. */
+  hostFirstName?: string;
+  meetingPoint: string;
+  availability: string;
 };
 
 export type FoodDetails = {
   restaurantName: string;
-  /** Cuisine and occasion, e.g. "Mexican, dinner". */
-  mealType: string;
-  /** Approximate cost, e.g. "$$ · about $40 a person". */
-  priceRange: string;
-  description: string;
+  cuisine: string;
+  neighbourhood: string;
+  meal: string;
+  /** "$" | "$$" | "$$$". */
+  priceLevel: string;
+  /** Estimated cost for two. */
+  estimatedCost: number;
+  currency: string;
+  walkMinutes: number;
+  /** Optional: the pack lists no booking note for F2. */
+  bookingNote?: string;
 };
 
 export type StayCard = {
@@ -80,6 +110,7 @@ export type PlannerResponse = {
    * never mistake sample listings and prices for real inventory.
    */
   mock: boolean;
+  budget: BudgetSummary;
   cards: PlannerCard[];
 };
 
@@ -118,14 +149,40 @@ function readString(
   return { ok: true, value };
 }
 
+/**
+ * Reads a field the pack may leave blank. An absent or empty value is accepted
+ * as `undefined`; anything present but the wrong type is still rejected, so
+ * this is tolerance for missing data rather than for malformed data.
+ */
+function readOptionalString(
+  source: Record<string, unknown>,
+  key: string,
+  path: string,
+): { ok: true; value: string | undefined } | { ok: false; failure: ParseFailure } {
+  const value = source[key];
+  if (value === undefined || value === null) return { ok: true, value: undefined };
+  if (typeof value !== "string") {
+    return { ok: false, failure: { reason: "expected a string", path: `${path}.${key}` } };
+  }
+  const trimmed = value.trim();
+  return { ok: true, value: trimmed === "" ? undefined : trimmed };
+}
+
 function readNumber(
   source: Record<string, unknown>,
   key: string,
   path: string,
+  { min = 0, max = Number.POSITIVE_INFINITY } = {},
 ): { ok: true; value: number } | { ok: false; failure: ParseFailure } {
   const value = source[key];
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return { ok: false, failure: { reason: "expected a finite number", path: `${path}.${key}` } };
+  }
+  if (value < min || value > max) {
+    return {
+      ok: false,
+      failure: { reason: `expected a number between ${min} and ${max}`, path: `${path}.${key}` },
+    };
   }
   return { ok: true, value };
 }
@@ -149,6 +206,13 @@ export function parseIsoDate(value: string): number | null {
   return timestamp;
 }
 
+/** A 24-hour clock time, e.g. "10:30". */
+export function parseClockTime(value: string): number | null {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
 const MS_PER_NIGHT = 24 * 60 * 60 * 1000;
 
 /** Nights between two ISO dates, or null when the range is invalid. */
@@ -166,17 +230,31 @@ export function nightsBetween(checkIn: string, checkOut: string): number | null 
 
 function parseStay(details: Record<string, unknown>, path: string): ParseResult | null {
   const strings: Record<string, string> = {};
-  for (const key of ["destination", "checkIn", "checkOut", "currency", "description", "listingTitle"]) {
+  for (const key of [
+    "listingTitle",
+    "propertyType",
+    "destination",
+    "checkIn",
+    "checkOut",
+    "currency",
+    "hostFirstName",
+    "highlight",
+  ]) {
     const read = readString(details, key, path);
     if (!read.ok) return { ok: false, failure: read.failure };
     strings[key] = read.value;
   }
 
-  const price = readNumber(details, "nightlyPrice", path);
-  if (!price.ok) return { ok: false, failure: price.failure };
-  if (price.value <= 0) {
-    return { ok: false, failure: { reason: "expected a positive price", path: `${path}.nightlyPrice` } };
+  for (const key of ["nightlyPrice", "totalPrice"]) {
+    const read = readNumber(details, key, path, { min: Number.MIN_VALUE });
+    if (!read.ok) return { ok: false, failure: read.failure };
   }
+
+  const rating = readNumber(details, "guestRating", path, { min: 0, max: 5 });
+  if (!rating.ok) return { ok: false, failure: rating.failure };
+
+  const reviews = readNumber(details, "reviewCount", path, { min: 0 });
+  if (!reviews.ok) return { ok: false, failure: reviews.failure };
 
   if (nightsBetween(strings.checkIn, strings.checkOut) === null) {
     return {
@@ -192,39 +270,53 @@ function parseStay(details: Record<string, unknown>, path: string): ParseResult 
 }
 
 function parseExperience(details: Record<string, unknown>, path: string): ParseResult | null {
-  for (const key of ["activityName", "duration"]) {
+  for (const key of ["activityName", "category", "date", "startTime", "meetingPoint", "availability", "currency"]) {
     const read = readString(details, key, path);
     if (!read.ok) return { ok: false, failure: read.failure };
   }
 
-  const dayPlan = details.dayPlan;
-  if (!Array.isArray(dayPlan) || dayPlan.length === 0) {
-    return {
-      ok: false,
-      failure: { reason: "expected a non-empty dayPlan array", path: `${path}.dayPlan` },
-    };
+  const host = readOptionalString(details, "hostFirstName", path);
+  if (!host.ok) return { ok: false, failure: host.failure };
+
+  const date = details.date;
+  if (typeof date === "string" && parseIsoDate(date) === null) {
+    return { ok: false, failure: { reason: "expected a real date", path: `${path}.date` } };
   }
 
-  for (let index = 0; index < dayPlan.length; index += 1) {
-    const entry = dayPlan[index];
-    const entryPath = `${path}.dayPlan[${index}]`;
-    if (!isRecord(entry)) {
-      return { ok: false, failure: { reason: "expected an object", path: entryPath } };
-    }
-    for (const key of ["day", "plan"]) {
-      const read = readString(entry, key, entryPath);
-      if (!read.ok) return { ok: false, failure: read.failure };
-    }
+  const startTime = details.startTime;
+  if (typeof startTime === "string" && parseClockTime(startTime) === null) {
+    return { ok: false, failure: { reason: "expected a 24-hour time", path: `${path}.startTime` } };
   }
+
+  const duration = readNumber(details, "durationHours", path, { min: Number.MIN_VALUE });
+  if (!duration.ok) return { ok: false, failure: duration.failure };
+
+  for (const key of ["pricePerGuest", "totalPrice"]) {
+    const read = readNumber(details, key, path, { min: Number.MIN_VALUE });
+    if (!read.ok) return { ok: false, failure: read.failure };
+  }
+
+  const rating = readNumber(details, "guestRating", path, { min: 0, max: 5 });
+  if (!rating.ok) return { ok: false, failure: rating.failure };
 
   return null;
 }
 
 function parseFood(details: Record<string, unknown>, path: string): ParseResult | null {
-  for (const key of ["restaurantName", "mealType", "priceRange", "description"]) {
+  for (const key of ["restaurantName", "cuisine", "neighbourhood", "meal", "priceLevel", "currency"]) {
     const read = readString(details, key, path);
     if (!read.ok) return { ok: false, failure: read.failure };
   }
+
+  const note = readOptionalString(details, "bookingNote", path);
+  if (!note.ok) return { ok: false, failure: note.failure };
+
+  const cost = readNumber(details, "estimatedCost", path, { min: Number.MIN_VALUE });
+  if (!cost.ok) return { ok: false, failure: cost.failure };
+
+  const walk = readNumber(details, "walkMinutes", path, { min: 0 });
+  if (!walk.ok) return { ok: false, failure: walk.failure };
+
   return null;
 }
 
@@ -232,11 +324,30 @@ function parseFood(details: Record<string, unknown>, path: string): ParseResult 
 /* Response validator                                                         */
 /* -------------------------------------------------------------------------- */
 
+function parseBudget(value: unknown): { ok: true; value: BudgetSummary } | { ok: false; failure: ParseFailure } {
+  const path = "response.budget";
+  if (!isRecord(value)) return { ok: false, failure: { reason: "expected an object", path } };
+
+  const reference = readNumber(value, "reference", path, { min: Number.MIN_VALUE });
+  if (!reference.ok) return { ok: false, failure: reference.failure };
+
+  const total = readNumber(value, "total", path, { min: 0 });
+  if (!total.ok) return { ok: false, failure: total.failure };
+
+  const currency = readString(value, "currency", path);
+  if (!currency.ok) return { ok: false, failure: currency.failure };
+
+  return {
+    ok: true,
+    value: { reference: reference.value, total: total.value, currency: currency.value },
+  };
+}
+
 /**
  * Validates an unknown planner payload into a `PlannerResponse`.
  *
- * Enforces, in order: the envelope, exactly three cards, and the
- * stay → experience → food sequence the prototype depends on.
+ * Enforces, in order: the envelope, the budget summary, exactly three cards,
+ * and the stay → experience → food sequence the prototype depends on.
  */
 export function parsePlannerResponse(value: unknown): ParseResult {
   if (!isRecord(value)) return fail("expected an object", "response");
@@ -250,6 +361,9 @@ export function parsePlannerResponse(value: unknown): ParseResult {
   if (typeof value.mock !== "boolean") {
     return fail("expected a boolean", "response.mock");
   }
+
+  const budget = parseBudget(value.budget);
+  if (!budget.ok) return { ok: false, failure: budget.failure };
 
   const cards = value.cards;
   if (!Array.isArray(cards)) return fail("expected an array", "response.cards");
@@ -297,6 +411,7 @@ export function parsePlannerResponse(value: unknown): ParseResult {
       requestId: requestId.value,
       summary: summary.value,
       mock: value.mock,
+      budget: budget.value,
       cards: parsed,
     },
   };

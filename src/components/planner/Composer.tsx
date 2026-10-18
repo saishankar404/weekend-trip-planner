@@ -72,7 +72,7 @@ export function Composer({
           maxLength={MAX_REQUEST_LENGTH}
           enterKeyHint="send"
           autoComplete="off"
-          placeholder="a slow weekend in austin, one good hike, tacos…"
+          placeholder="a quiet weekend in kyoto, tea and ramen…"
           className="min-h-10 flex-1 resize-none bg-transparent py-2 text-[16px] leading-6 text-ink outline-none placeholder:text-ink-3 sm:text-body"
         />
         <button

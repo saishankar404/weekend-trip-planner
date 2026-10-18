@@ -1,6 +1,13 @@
 import { House, MapPin } from "@phosphor-icons/react";
 
-import { formatDay, formatNights, formatPrice } from "@/lib/planner/format";
+import {
+  formatDay,
+  formatNights,
+  formatPrice,
+  formatRating,
+  formatReviews,
+  joinMeta,
+} from "@/lib/planner/format";
 import { nightsBetween, type StayCard as StayCardData } from "@/lib/planner/schema";
 
 import { CardImage } from "./CardImage";
@@ -41,6 +48,17 @@ export function StayCard({ card }: { card: StayCardData }) {
           {details.destination}
         </p>
 
+        <p className="mt-2 text-meta text-ink-3">
+          {joinMeta([details.propertyType, `hosted by ${details.hostFirstName}`])}
+        </p>
+
+        <p className="mt-1 text-meta tabular-nums text-ink-3">
+          {joinMeta([
+            formatRating(details.guestRating),
+            formatReviews(details.reviewCount),
+          ])}
+        </p>
+
         <p className="mt-3 flex items-baseline gap-1.5">
           <span className="text-body font-medium tabular-nums text-ink">
             {formatPrice(details.nightlyPrice, details.currency)}
@@ -48,7 +66,11 @@ export function StayCard({ card }: { card: StayCardData }) {
           <span className="text-meta text-ink-3">a night</span>
         </p>
 
-        <p className="mt-3 text-body text-ink-2 text-pretty">{details.description}</p>
+        <p className="mt-1 text-meta tabular-nums text-ink-3">
+          {formatPrice(details.totalPrice, details.currency)} for {formatNights(nights)}
+        </p>
+
+        <p className="mt-3 text-body text-ink-2 text-pretty">{details.highlight}</p>
       </div>
     </article>
   );
