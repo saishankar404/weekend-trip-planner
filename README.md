@@ -87,9 +87,16 @@ That produces **$516 of $600**, and all three land in Gion: a machiya with a ced
 tub, a tea ceremony, and a ramen counter eight minutes away. An over-tight budget
 returns no plan rather than an incoherent one.
 
-The pack's dates (11–13 April 2025) are in the past, so the weekend is shifted
-forward to the next Friday–Sunday, keeping the same shape: two nights, activity on
-the Saturday.
+The dates on the cards are the pack's own, read from its **Check-in Date**,
+**Check-out Date** and **Date** columns and shown exactly as written: **Fri 11 →
+Sun 13 April 2025**, with the activity on the Saturday the 12th. They are in the
+past, and they are deliberately left that way. The card's job is to prove the
+approved pack defines a fixed two-night weekend, so the dates on screen have to
+come from the sheet rather than from the machine's clock — generated dates would
+be the one thing on the card that could not be checked against the pack, and they
+would differ from run to run. Nothing in the prototype depends on the dates being
+in the future: there is no booking step, no calendar, and the response contract
+only requires a valid date with check-out after check-in.
 
 ## Missing fields
 
@@ -185,7 +192,7 @@ airbnb-trip-planner-chat-spec-v3.pdf
 ```bash
 npm run lint        # eslint
 npm run typecheck   # tsc --noEmit
-npm run verify      # 32 contract and selection checks
+npm run verify      # 33 contract and selection checks
 npm run build       # production build
 ```
 

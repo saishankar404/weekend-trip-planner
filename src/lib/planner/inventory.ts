@@ -14,6 +14,13 @@
  *
  * The pack carries no photo URLs (image rights were not cleared), which is why
  * every card draws its own placeholder.
+ *
+ * The dates are the pack's own, read straight from its "Check-in Date",
+ * "Check-out Date" and "Date" columns. They fall in April 2025 — in the past —
+ * and they are shown exactly as written. The card's job is to prove that the
+ * approved pack defines a fixed two-night weekend, so the dates on screen have
+ * to come from the sheet rather than from the clock; nothing in the prototype
+ * depends on them being in the future.
  */
 
 /** Provenance, kept with the data so the numbers can always be traced back. */
@@ -35,6 +42,10 @@ export type StayOption = {
   listingTitle: string;
   propertyType: string;
   neighbourhood: string;
+  /** ISO date, verbatim from the pack's "Check-in Date" column. */
+  checkIn: string;
+  /** ISO date, verbatim from the pack's "Check-out Date" column. */
+  checkOut: string;
   nightlyPrice: number;
   /** "Total for 2 Nights (USD)". */
   totalPrice: number;
@@ -50,6 +61,8 @@ export type ExperienceOption = {
   category: string;
   /** Blank in the pack for E4. */
   hostFirstName?: string;
+  /** ISO date, verbatim from the pack's "Date" column — the Saturday. */
+  date: string;
   startTime: string;
   durationHours: number;
   pricePerGuest: number;
@@ -73,12 +86,15 @@ export type FoodOption = {
   bookingNote?: string;
 };
 
+/** Every stay in the pack is the same fixed weekend: Fri 11 → Sun 13 April. */
 export const STAYS: readonly StayOption[] = [
   {
     id: "S1",
     listingTitle: "Restored machiya townhouse near Gion",
     propertyType: "Entire townhouse",
     neighbourhood: "Gion",
+    checkIn: "2025-04-11",
+    checkOut: "2025-04-13",
     nightlyPrice: 168,
     totalPrice: 366,
     guestRating: 4.92,
@@ -91,6 +107,8 @@ export const STAYS: readonly StayOption[] = [
     listingTitle: "Quiet tatami room by the Kamo River",
     propertyType: "Private room in home",
     neighbourhood: "Shimogyo",
+    checkIn: "2025-04-11",
+    checkOut: "2025-04-13",
     nightlyPrice: 142,
     totalPrice: 312,
     guestRating: 4.88,
@@ -103,6 +121,8 @@ export const STAYS: readonly StayOption[] = [
     listingTitle: "Bright two-room flat off Sanjo Street",
     propertyType: "Entire apartment",
     neighbourhood: "Nakagyo",
+    checkIn: "2025-04-11",
+    checkOut: "2025-04-13",
     nightlyPrice: 112,
     totalPrice: 249,
     guestRating: 4.71,
@@ -115,6 +135,8 @@ export const STAYS: readonly StayOption[] = [
     listingTitle: "Design ryokan suite with garden view",
     propertyType: "Private room in ryokan",
     neighbourhood: "Higashiyama",
+    checkIn: "2025-04-11",
+    checkOut: "2025-04-13",
     nightlyPrice: 290,
     // 612 for the weekend: more than the whole reference budget on its own.
     totalPrice: 612,
@@ -125,12 +147,14 @@ export const STAYS: readonly StayOption[] = [
   },
 ];
 
+/** Every activity in the pack runs on the Saturday, 12 April. */
 export const EXPERIENCES: readonly ExperienceOption[] = [
   {
     id: "E1",
     activityName: "Tea ceremony in a 100-year-old machiya",
     category: "Culture",
     hostFirstName: "Mei",
+    date: "2025-04-12",
     startTime: "10:30",
     durationHours: 2,
     pricePerGuest: 58,
@@ -144,6 +168,7 @@ export const EXPERIENCES: readonly ExperienceOption[] = [
     activityName: "Nishiki Market tasting walk with a local cook",
     category: "Food & drink",
     hostFirstName: "Takumi",
+    date: "2025-04-12",
     startTime: "11:00",
     durationHours: 3,
     pricePerGuest: 85,
@@ -157,6 +182,7 @@ export const EXPERIENCES: readonly ExperienceOption[] = [
     activityName: "Dawn walk through Fushimi Inari's upper gates",
     category: "Nature",
     hostFirstName: "Ren",
+    date: "2025-04-12",
     startTime: "06:00",
     durationHours: 2.5,
     pricePerGuest: 38,
@@ -171,6 +197,7 @@ export const EXPERIENCES: readonly ExperienceOption[] = [
     activityName: "Throw a tea bowl in a Kiyomizu pottery studio",
     category: "Craft",
     // No host listed in the pack.
+    date: "2025-04-12",
     startTime: "14:00",
     durationHours: 1.5,
     pricePerGuest: 72,
@@ -227,44 +254,3 @@ export const FOOD: readonly FoodOption[] = [
     bookingNote: "Book 3 days ahead",
   },
 ];
-
-/* -------------------------------------------------------------------------- */
-/* Weekend dates                                                              */
-/* -------------------------------------------------------------------------- */
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-function isoDate(timestamp: number): string {
-  return new Date(timestamp).toISOString().slice(0, 10);
-}
-
-export type Weekend = {
-  /** Friday. */
-  checkIn: string;
-  /** Sunday, two nights later. */
-  checkOut: string;
-  /** The Saturday the experience sits on. */
-  activityDate: string;
-};
-
-/**
- * The pack's dates (2025-04-11 → 2025-04-13) are in the past, so the weekend is
- * shifted forward: the same shape — Friday to Sunday, two nights, the activity
- * on the Saturday — anchored to the next Friday.
- *
- * Arithmetic is done in UTC from the local calendar date, so the result is a
- * plain calendar date and never drifts across a time zone or a DST boundary.
- */
-export function upcomingWeekend(now: Date = new Date()): Weekend {
-  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekday = new Date(today).getUTCDay(); // 0 Sunday … 6 Saturday
-  const daysUntilFriday = (5 - weekday + 7) % 7;
-
-  const checkIn = today + daysUntilFriday * MS_PER_DAY;
-
-  return {
-    checkIn: isoDate(checkIn),
-    checkOut: isoDate(checkIn + 2 * MS_PER_DAY),
-    activityDate: isoDate(checkIn + 1 * MS_PER_DAY),
-  };
-}

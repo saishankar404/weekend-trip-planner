@@ -14,7 +14,7 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
-/** "2026-10-23" → "Fri, Oct 23". Falls back to the raw value if unparseable. */
+/** "2025-04-11" → "Fri, Apr 11". Falls back to the raw value if unparseable. */
 export function formatDay(iso: string): string {
   const timestamp = parseIsoDate(iso);
   if (timestamp === null) return iso;

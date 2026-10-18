@@ -17,7 +17,7 @@ const select = await import("../src/lib/planner/select.ts");
 
 const { parsePlannerResponse, nightsBetween } = schema;
 const { buildMockTrip, buildMalformedResponse } = fixtures;
-const { EXPERIENCES, FOOD, STAYS, REFERENCE_BUDGET, upcomingWeekend } = inventory;
+const { EXPERIENCES, FOOD, STAYS, REFERENCE_BUDGET } = inventory;
 const { isBookableExperience, selectWeekend } = select;
 
 const checks = [];
@@ -324,17 +324,48 @@ check("planTrip refuses an empty request", async () => {
 /* Selection                                                                  */
 /* -------------------------------------------------------------------------- */
 
-check("the weekend is shifted off the pack's past dates", () => {
-  const weekend = upcomingWeekend(new Date("2026-10-19T12:00:00Z"));
+check("the card carries the pack's own dates, not generated ones", () => {
+  const trip = buildMockTrip();
+  const [stayCard, experienceCard] = trip.cards;
+  const stayRow = STAYS.find((option) => option.id === "S1");
+  const experienceRow = EXPERIENCES.find((option) => option.id === "E1");
 
-  // 2026-10-19 is a Monday, so the next Friday is the 23rd.
-  assert.equal(weekend.checkIn, "2026-10-23");
-  assert.equal(weekend.checkOut, "2026-10-25");
+  // Verbatim from the Stays sheet's "Check-in Date" and "Check-out Date".
+  assert.equal(stayCard.details.checkIn, stayRow.checkIn);
+  assert.equal(stayCard.details.checkOut, stayRow.checkOut);
+  assert.equal(stayCard.details.checkIn, "2025-04-11");
+  assert.equal(stayCard.details.checkOut, "2025-04-13");
 
-  const weekday = new Date(`${weekend.checkIn}T00:00:00Z`).getUTCDay();
-  assert.equal(weekday, 5, "check-in should be a Friday");
-  assert.equal(nightsBetween(weekend.checkIn, weekend.checkOut), 2);
-  assert.ok(weekend.checkIn > "2025-04-13", "the pack's dates are in the past");
+  // The activity sits on the Saturday, from its own "Date" column.
+  assert.equal(experienceCard.details.date, experienceRow.date);
+  assert.equal(experienceCard.details.date, "2025-04-12");
+
+  // Still a fixed Friday → Sunday weekend, two nights.
+  assert.equal(new Date(`${stayCard.details.checkIn}T00:00:00Z`).getUTCDay(), 5);
+  assert.equal(nightsBetween(stayCard.details.checkIn, stayCard.details.checkOut), 2);
+
+  // The dates cannot drift with the clock: the same values on every run.
+  assert.equal(stayCard.details.checkIn, buildMockTrip().cards[0].details.checkIn);
+  assert.equal(stayCard.details.checkOut, buildMockTrip().cards[0].details.checkOut);
+});
+
+check("every row carries the same fixed weekend", () => {
+  for (const option of STAYS) {
+    assert.ok(option.checkIn && option.checkOut, `${option.id} has no dates`);
+    assert.equal(
+      nightsBetween(option.checkIn, option.checkOut),
+      2,
+      `${option.id} is not a two-night stay`,
+    );
+  }
+
+  for (const option of EXPERIENCES) {
+    assert.ok(option.date, `${option.id} has no date`);
+  }
+
+  // One weekend across the pack, not four different ones.
+  assert.equal(new Set(STAYS.map((o) => `${o.checkIn}..${o.checkOut}`)).size, 1);
+  assert.equal(new Set(EXPERIENCES.map((o) => o.date)).size, 1);
 });
 
 check("a sold-out option can never be booked", () => {

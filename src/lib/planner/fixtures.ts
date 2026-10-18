@@ -6,7 +6,7 @@
  * the response and the UI labels it as a sample.
  */
 
-import { CITY, upcomingWeekend } from "./inventory";
+import { CITY } from "./inventory";
 import type { PlannerResponse } from "./schema";
 import { selectWeekend } from "./select";
 
@@ -23,7 +23,6 @@ export function buildMockTrip(): PlannerResponse {
   }
 
   const { stay, experience, food, total, budget, currency } = selected;
-  const weekend = upcomingWeekend();
 
   return {
     requestId: "req_sample_kyoto",
@@ -40,8 +39,8 @@ export function buildMockTrip(): PlannerResponse {
           listingTitle: stay.listingTitle,
           propertyType: stay.propertyType,
           destination: `${stay.neighbourhood}, ${CITY}`,
-          checkIn: weekend.checkIn,
-          checkOut: weekend.checkOut,
+          checkIn: stay.checkIn,
+          checkOut: stay.checkOut,
           nightlyPrice: stay.nightlyPrice,
           totalPrice: stay.totalPrice,
           currency,
@@ -57,7 +56,7 @@ export function buildMockTrip(): PlannerResponse {
         details: {
           activityName: experience.activityName,
           category: experience.category,
-          date: weekend.activityDate,
+          date: experience.date,
           startTime: experience.startTime,
           durationHours: experience.durationHours,
           pricePerGuest: experience.pricePerGuest,
