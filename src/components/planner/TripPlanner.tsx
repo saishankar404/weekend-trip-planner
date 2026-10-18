@@ -169,6 +169,16 @@ export function TripPlanner() {
     if (lastEntry?.kind === "error") retryRef.current?.focus();
   }, [lastEntry]);
 
+  /*
+   * Disabling the field while a request is in flight is what makes the lock
+   * visible, but a disabled element cannot hold focus, so it drops to the
+   * document. Once a plan lands, put focus back where the guest was typing.
+   */
+  useEffect(() => {
+    if (busy || lastEntry?.kind !== "plan") return;
+    inputRef.current?.focus();
+  }, [busy, lastEntry]);
+
   const submit = useCallback(
     (text: string) => {
       if (text.trim().length === 0 || busy) return;

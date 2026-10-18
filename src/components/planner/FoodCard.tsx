@@ -4,6 +4,7 @@ import { formatPrice, joinMeta } from "@/lib/planner/format";
 import type { FoodCard as FoodCardData } from "@/lib/planner/schema";
 
 import { CardImage } from "./CardImage";
+import { FieldValue } from "./FieldValue";
 import { cardBody, cardFrame, cardLabel } from "./styles";
 
 /**
@@ -13,8 +14,9 @@ import { cardBody, cardFrame, cardLabel } from "./styles";
  * circular image on the right, place and cuisine on the left, cost below. The
  * restaurant name carries the 24px step.
  *
- * The pack leaves F2 without a booking note, so that line is optional and the
- * card closes cleanly without it.
+ * The content pack ships no description for any food row, and the Stage 1 card
+ * spec asks for one, so the field is filled rather than dropped. The booking
+ * note is optional in the pack for the same reason.
  */
 export function FoodCard({ card }: { card: FoodCardData }) {
   const { details } = card;
@@ -29,10 +31,17 @@ export function FoodCard({ card }: { card: FoodCardData }) {
               {details.restaurantName}
             </h2>
             <p className="mt-1 text-meta text-ink-2">
-              {joinMeta([details.cuisine, details.meal])}
+              <FieldValue value={joinMeta([details.cuisine, details.meal])} />
             </p>
             <p className="mt-1 text-meta text-ink-3">
-              {joinMeta([details.neighbourhood, `${details.walkMinutes} min walk`])}
+              <FieldValue
+                value={joinMeta([
+                  details.neighbourhood,
+                  details.walkMinutes === undefined
+                    ? undefined
+                    : `${details.walkMinutes} min walk`,
+                ])}
+              />
             </p>
           </div>
 
@@ -45,15 +54,21 @@ export function FoodCard({ card }: { card: FoodCardData }) {
         </div>
 
         <p className="mt-4 text-body font-medium tabular-nums text-ink">
-          {joinMeta([
-            details.priceLevel,
-            `about ${formatPrice(details.estimatedCost, details.currency)} for two`,
-          ])}
+          <FieldValue
+            value={joinMeta([
+              details.priceLevel,
+              `about ${formatPrice(details.estimatedCost, details.currency)} for two`,
+            ])}
+          />
         </p>
 
-        {details.bookingNote ? (
-          <p className="mt-2 text-body text-ink-2 text-pretty">{details.bookingNote}</p>
-        ) : null}
+        <p className="mt-2 text-body text-ink-2 text-pretty">
+          <FieldValue value={details.description} />
+        </p>
+
+        <p className="mt-2 text-meta text-ink-3">
+          <FieldValue value={details.bookingNote} />
+        </p>
       </div>
     </article>
   );

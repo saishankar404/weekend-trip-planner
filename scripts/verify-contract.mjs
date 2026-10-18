@@ -213,6 +213,76 @@ check("an absent booking note is accepted", () => {
   assert.equal(result.ok, true, JSON.stringify(result.failure));
 });
 
+check("an absent food description is accepted and left to the filler", () => {
+  const trip = buildMockTrip();
+  const [stay, experience, food] = trip.cards;
+
+  // The content pack ships no description for any food row.
+  assert.equal(food.details.description, undefined);
+
+  const { description: _dropped, ...noDescription } = food.details;
+  const result = parsePlannerResponse({
+    ...trip,
+    cards: [stay, experience, { ...food, details: noDescription }],
+  });
+
+  assert.equal(result.ok, true, JSON.stringify(result.failure));
+});
+
+check("an absent day plan is accepted and left to the filler", () => {
+  const trip = buildMockTrip();
+  const [stay, experience, food] = trip.cards;
+
+  // Likewise, no experience row in the pack carries a day-by-day plan.
+  assert.equal(experience.details.dayPlan, undefined);
+
+  const { dayPlan: _dropped, ...noPlan } = experience.details;
+  const result = parsePlannerResponse({
+    ...trip,
+    cards: [stay, { ...experience, details: noPlan }, food],
+  });
+
+  assert.equal(result.ok, true, JSON.stringify(result.failure));
+});
+
+check("a day plan that is present must still be well formed", () => {
+  const trip = buildMockTrip();
+  const [stay, experience, food] = trip.cards;
+  const result = parsePlannerResponse({
+    ...trip,
+    cards: [
+      stay,
+      { ...experience, details: { ...experience.details, dayPlan: [{ day: "Sat" }] } },
+      food,
+    ],
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.failure.path, "response.cards[1].details.dayPlan[0].plan");
+});
+
+check("a well formed day plan survives validation", () => {
+  const trip = buildMockTrip();
+  const [stay, experience, food] = trip.cards;
+  const result = parsePlannerResponse({
+    ...trip,
+    cards: [
+      stay,
+      {
+        ...experience,
+        details: {
+          ...experience.details,
+          dayPlan: [{ day: "Sat 12 Apr", plan: "Bamboo grove and matcha tasting" }],
+        },
+      },
+      food,
+    ],
+  });
+
+  assert.equal(result.ok, true, JSON.stringify(result.failure));
+  assert.equal(result.response.cards[1].details.dayPlan.length, 1);
+});
+
 check("a host of the wrong type is still rejected", () => {
   const trip = buildMockTrip();
   const [stay, experience, food] = trip.cards;
@@ -224,7 +294,6 @@ check("a host of the wrong type is still rejected", () => {
   assert.equal(result.ok, false);
   assert.equal(result.failure.path, "response.cards[1].details.hostFirstName");
 });
-
 /* -------------------------------------------------------------------------- */
 /* The planner                                                                */
 /* -------------------------------------------------------------------------- */

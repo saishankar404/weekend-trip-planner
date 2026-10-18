@@ -58,7 +58,11 @@ export function Composer({
         if (canSubmit) onSubmit();
       }}
     >
-      <div className="flex items-end gap-2 rounded-card border border-line bg-linen p-2 pl-4 focus-within:border-line-strong">
+      <div
+        className={`flex items-end gap-2 rounded-card border bg-linen p-2 pl-4 transition-opacity duration-[160ms] motion-reduce:transition-none ${
+          busy ? "border-line opacity-60" : "border-line focus-within:border-line-strong"
+        }`}
+      >
         <label htmlFor="trip-request" className="sr-only">
           describe your weekend
         </label>
@@ -68,18 +72,19 @@ export function Composer({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
+          disabled={busy}
           rows={1}
           maxLength={MAX_REQUEST_LENGTH}
           enterKeyHint="send"
           autoComplete="off"
           placeholder="a quiet weekend in kyoto, tea and ramen…"
-          className="min-h-10 flex-1 resize-none bg-transparent py-2 text-[16px] leading-6 text-ink outline-none placeholder:text-ink-3 sm:text-body"
+          className="min-h-10 flex-1 resize-none bg-transparent py-2 text-[16px] leading-6 text-ink outline-none placeholder:text-ink-3 disabled:cursor-not-allowed sm:text-body"
         />
         <button
           type="submit"
           disabled={!canSubmit}
           aria-label="send your trip request"
-          className="grid size-10 shrink-0 place-items-center rounded-full bg-ink text-surface transition-transform duration-[160ms] ease-out-strong active:scale-[0.97] disabled:bg-line-strong disabled:text-ink-3 motion-reduce:transition-none"
+          className="grid size-10 shrink-0 place-items-center rounded-full bg-ink text-surface transition-transform duration-[160ms] ease-out-strong active:scale-[0.97] disabled:cursor-not-allowed disabled:bg-line-strong disabled:text-ink-3 motion-reduce:transition-none"
         >
           <ArrowUp size={20} weight="bold" aria-hidden="true" />
         </button>

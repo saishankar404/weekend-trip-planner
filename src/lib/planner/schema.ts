@@ -47,6 +47,18 @@ export type StayDetails = {
   highlight: string;
 };
 
+/**
+ * One row of an activity's day-by-day plan.
+ *
+ * Required by the Stage 1 card spec but absent from every row in the content
+ * pack, so it is optional here and the card fills the gap rather than dropping
+ * the field.
+ */
+export type DayPlan = {
+  day: string;
+  plan: string;
+};
+
 export type ExperienceDetails = {
   activityName: string;
   category: string;
@@ -63,6 +75,8 @@ export type ExperienceDetails = {
   hostFirstName?: string;
   meetingPoint: string;
   availability: string;
+  /** Optional: no row in the content pack supplies one. */
+  dayPlan?: DayPlan[];
 };
 
 export type FoodDetails = {
@@ -78,6 +92,8 @@ export type FoodDetails = {
   walkMinutes: number;
   /** Optional: the pack lists no booking note for F2. */
   bookingNote?: string;
+  /** Optional: no row in the content pack supplies one. */
+  description?: string;
 };
 
 export type StayCard = {
@@ -166,6 +182,44 @@ function readOptionalString(
   }
   const trimmed = value.trim();
   return { ok: true, value: trimmed === "" ? undefined : trimmed };
+}
+
+/**
+ * Reads an optional day-by-day plan.
+ *
+ * Absent is fine — the content pack supplies none — but present-and-malformed
+ * is still rejected, so the filler treatment can never hide a broken payload.
+ */
+function readOptionalDayPlan(
+  source: Record<string, unknown>,
+  key: string,
+  path: string,
+): { ok: true; value: DayPlan[] | undefined } | { ok: false; failure: ParseFailure } {
+  const value = source[key];
+  if (value === undefined || value === null) return { ok: true, value: undefined };
+
+  if (!Array.isArray(value) || value.length === 0) {
+    return {
+      ok: false,
+      failure: { reason: "expected a non-empty array", path: `${path}.${key}` },
+    };
+  }
+
+  const parsed: DayPlan[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const entry = value[index];
+    const entryPath = `${path}.${key}[${index}]`;
+    if (!isRecord(entry)) {
+      return { ok: false, failure: { reason: "expected an object", path: entryPath } };
+    }
+    for (const field of ["day", "plan"]) {
+      const read = readString(entry, field, entryPath);
+      if (!read.ok) return { ok: false, failure: read.failure };
+    }
+    parsed.push({ day: entry.day as string, plan: entry.plan as string });
+  }
+
+  return { ok: true, value: parsed };
 }
 
 function readNumber(
@@ -278,6 +332,9 @@ function parseExperience(details: Record<string, unknown>, path: string): ParseR
   const host = readOptionalString(details, "hostFirstName", path);
   if (!host.ok) return { ok: false, failure: host.failure };
 
+  const dayPlan = readOptionalDayPlan(details, "dayPlan", path);
+  if (!dayPlan.ok) return { ok: false, failure: dayPlan.failure };
+
   const date = details.date;
   if (typeof date === "string" && parseIsoDate(date) === null) {
     return { ok: false, failure: { reason: "expected a real date", path: `${path}.date` } };
@@ -310,6 +367,9 @@ function parseFood(details: Record<string, unknown>, path: string): ParseResult 
 
   const note = readOptionalString(details, "bookingNote", path);
   if (!note.ok) return { ok: false, failure: note.failure };
+
+  const description = readOptionalString(details, "description", path);
+  if (!description.ok) return { ok: false, failure: description.failure };
 
   const cost = readNumber(details, "estimatedCost", path, { min: Number.MIN_VALUE });
   if (!cost.ok) return { ok: false, failure: cost.failure };

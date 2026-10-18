@@ -11,6 +11,7 @@ import {
 import type { ExperienceCard as ExperienceCardData } from "@/lib/planner/schema";
 
 import { CardImage } from "./CardImage";
+import { FieldValue, MISSING_FIELD_TEXT } from "./FieldValue";
 import { cardBody, cardFrame, cardLabel } from "./styles";
 
 /**
@@ -23,16 +24,29 @@ import { cardBody, cardFrame, cardLabel } from "./styles";
  *
  * The pack ships one activity with a start time rather than a day-by-day
  * itinerary, so the card shows what actually exists instead of inventing a
- * schedule around it.
+ * schedule around it. The day plan the Stage 1 card spec asks for is still
+ * rendered, through the shared filler, rather than quietly dropped.
  */
 export function ExperienceCard({ card }: { card: ExperienceCardData }) {
   const { details } = card;
 
-  const facts = [
-    { label: "when", value: joinMeta([formatDay(details.date), formatTime(details.startTime)]) },
-    { label: "lasts", value: formatDuration(details.durationHours) },
-    { label: "meets", value: details.meetingPoint },
+  const rows: Array<{ key: string; label: string; value?: string }> = [
+    {
+      key: "when",
+      label: "when",
+      value: joinMeta([formatDay(details.date), formatTime(details.startTime)]),
+    },
+    { key: "lasts", label: "lasts", value: formatDuration(details.durationHours) },
+    { key: "meets", label: "meets", value: details.meetingPoint },
   ];
+
+  if (details.dayPlan && details.dayPlan.length > 0) {
+    details.dayPlan.forEach((entry, index) => {
+      rows.push({ key: `day-${index}`, label: entry.day, value: entry.plan });
+    });
+  } else {
+    rows.push({ key: "day-plan", label: "day plan" });
+  }
 
   return (
     <article className={`${cardFrame} sm:grid sm:grid-cols-[180px_1fr]`}>
@@ -52,29 +66,36 @@ export function ExperienceCard({ card }: { card: ExperienceCardData }) {
         <p className="mt-1 text-meta text-ink-2">
           {joinMeta([
             details.category,
-            details.hostFirstName ? `hosted by ${details.hostFirstName}` : undefined,
+            details.hostFirstName
+              ? `hosted by ${details.hostFirstName}`
+              : `host ${MISSING_FIELD_TEXT}`,
             formatRating(details.guestRating),
           ])}
         </p>
 
         <dl className="mt-3">
-          {facts.map((fact, index) => (
+          {rows.map((row, index) => (
             <div
-              key={fact.label}
+              key={row.key}
               className={`schedule-row ${index === 0 ? "pb-3" : "py-3"}`}
             >
-              <dt className={`${cardLabel} text-exp`}>{fact.label}</dt>
-              <dd className="mt-1 text-body text-ink-2 text-pretty">{fact.value}</dd>
+              <dt className={`${cardLabel} text-exp`}>{row.label}</dt>
+              <dd className="mt-1 text-body text-ink-2 text-pretty">
+                <FieldValue value={row.value} />
+              </dd>
             </div>
           ))}
         </dl>
 
         <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <p className="text-body font-medium tabular-nums text-ink">
-            {formatPrice(details.pricePerGuest, details.currency)}
-            <span className="font-normal text-ink-3"> a guest</span>
+            <FieldValue
+              value={`${formatPrice(details.pricePerGuest, details.currency)} a guest`}
+            />
           </p>
-          <p className="text-meta text-ink-3">{details.availability}</p>
+          <p className="text-meta text-ink-3">
+            <FieldValue value={details.availability} />
+          </p>
         </div>
 
         <p className="mt-1 text-meta tabular-nums text-ink-3">
