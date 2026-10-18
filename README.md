@@ -127,11 +127,23 @@ status announcements are all handled.
 
 ## Stage 1 specification
 
-`stage-1-spec.url` is present but **unresolved**: it holds a marked placeholder
-rather than a real link. The original source URL could not be located in the
-workbook, in any of the spec documents on disk, or anywhere in this repository's
-history, and inventing one would be worse than leaving the gap. The file records
-what was checked; replace the placeholder URL when the real one is available.
+The Stage 1 card specification is in the repository as
+[`airbnb-trip-planner-chat-spec-v3.pdf`](airbnb-trip-planner-chat-spec-v3.pdf), and
+**`Stage 1 Spec.url`** opens it on GitHub:
+
+<https://github.com/saishankar404/weekend-trip-planner/blob/main/airbnb-trip-planner-chat-spec-v3.pdf>
+
+That link is the file's real GitHub URL — owner, repository, branch and path all
+match the tracked file — and the repository is public, so it opens for anyone.
+
+The document is the source of the card field lists the prototype renders, and the
+cards follow it: stay takes `checkIn`, `checkOut`, `destination`, `nightlyPrice`
+and `description`; experience takes `activityName`, `duration` and a `dayPlan`
+array of `{ day, plan }`, one per day; food takes `restaurantName`, `mealType`,
+`priceRange` and `description`. It is also where the `?fail=once` trigger and the
+error-bubble copy come from. It corroborates the `dayPlan` shape `schema.ts` uses,
+and confirms that neither the day plan nor the food description is supplied by the
+content pack — which is why both render through the shared filler.
 
 ## Project shape
 
@@ -163,6 +175,9 @@ scripts/
   verify-contract.mjs   the contract and selection checks
 docs/
   demo.png              the screenshot above
+Stage 1 Spec.url        opens the Stage 1 spec on GitHub
+airbnb-trip-planner-chat-spec-v3.pdf
+                        the Stage 1 card specification itself
 ```
 
 ## Checks
